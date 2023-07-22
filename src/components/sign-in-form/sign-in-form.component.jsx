@@ -1,8 +1,13 @@
 import { useState } from "react";
 import FormInput from '../form-input/form-input.component';
 import Button from '../button/button.component';
-import './sign-up-form.styles.scss';
-import { createAuthUserWithEmailAndPassword, createUserDocumentFromAuth } from "../../utils/firebase/firebase.utils";
+import './sign-in-form.styles.scss';
+import { 
+    signInWithGooglePopup, 
+    createAuthUserWithEmailAndPassword, 
+    createUserDocumentFromAuth,
+    signInAuthUserWithEmailAndPassword 
+} from "../../utils/firebase/firebase.utils";
 
 const defaultFormFields = {
     displayName: '',
@@ -11,13 +16,18 @@ const defaultFormFields = {
     confirmPassword: ''
 }
 
-const SignUpForm = () => {
+const SignInForm = () => {
 
     const [formFields, setFormFields] = useState(defaultFormFields);
     const {displayName, email, password, confirmPassword} = formFields;
 
     const resetFormFields = () => {
         setFormFields(defaultFormFields);
+    }
+
+    const signInWithGoogle = async () => {
+        const { user } = await signInWithGooglePopup();
+        const userDocRef = await createUserDocumentFromAuth(user);
     }
     
     const handleChange = (event) => {
@@ -27,45 +37,26 @@ const SignUpForm = () => {
     
     const handleSubmit = async (event) => {
         event.preventDefault();
-        if(password !== confirmPassword) {
-            alert("passwords dont match");
-            return;
-        }
-    
         try {
-            const {user} = await createAuthUserWithEmailAndPassword(email, password);
-            console.log(user);
-            await createUserDocumentFromAuth(user, {displayName});
+            const response = await signInAuthUserWithEmailAndPassword(email, password);
+            console.log(response);
             resetFormFields();
-
         }
         catch(error) {
-            if(error.code === "auth/email-already-in-use") {
-                alert("email taken");
+            if(error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+                alert("wrong email/password");
             }
-            else {
-                console.log("user creation: "+error);
-            }
+            console.log(error);
         }
         // confirm passwords match, then auth user, then create userdoc.
         
     }
 
     return (
-        <div className="sign-up-container">
-            <h2>Don't have an account?</h2>
-            <span>Sign up with your email and password</span>
+        <div className="sign-in-container">
+            <h2>Already have an account?</h2>
+            <span>Sign in with your email and password</span>
             <form onSubmit={handleSubmit}>
-                <FormInput 
-                    label="Display Name" 
-                    inputOptions= {{
-                        onChange:handleChange,
-                        value:displayName, 
-                        name:"displayName", 
-                        required:true, 
-                        type:"text",
-                    }}
-                />
                 <FormInput 
                     label="Email" 
                     inputOptions= {{
@@ -86,20 +77,13 @@ const SignUpForm = () => {
                         type:"password",
                     }}
                 />
-                <FormInput 
-                    label="Confirm Password" 
-                    inputOptions= {{
-                        onChange:handleChange,
-                        value:confirmPassword, 
-                        name:"confirmPassword", 
-                        required:true, 
-                        type:"password",
-                    }}
-                />
-                <Button buttonType="inverted" type="submit">Sign Up</Button>
+                <div className="buttons-container">
+                <Button type="submit">Sign In</Button>
+                <Button type="button" buttonType="google" onClick={signInWithGoogle}>Google Sign In</Button>
+                </div>
             </form>
         </div>
     )
 }
 
-export default SignUpForm;
+export default SignInForm;
